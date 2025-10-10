@@ -972,9 +972,10 @@ Dump options:\n\
                 _putts_or_not(TEXT("[+] Disabling all EDR callbacks..."));
                 DisableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
                 if (toggle_option == DISABLE_WAIT_ENABLE) {
-                    _tprintf_or_not(TEXT("\n[+] Press ENTER to enable callbacks again: "));
+                    _tprintf_or_not(TEXT("\n[+] Press ENTER to enable callbacks again:"));
+					fflush(stdout); // flush to ensure the prompt is printed before waiting for input (stupid Windows buffering...)
                     fgetc(stdin); // wait for ENTER
-                    _putts_or_not(TEXT("\n[*] Re-enabling all EDR callbacks..."));
+                    _putts_or_not(TEXT("[*] Re-enabling all EDR callbacks..."));
                     EnableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
 				}
             }
