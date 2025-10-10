@@ -194,7 +194,9 @@ Dump options:\n\
     BOOL status;
     HRESULT hrStatus = S_OK;
     TCHAR currentFolderPath[MAX_PATH] = { 0 };
-    GetCurrentDirectory(_countof(currentFolderPath), currentFolderPath);
+    GetModuleFileName((HMODULE)0, currentFolderPath, _countof(currentFolderPath));
+    TCHAR* lastSlash = _tcsrchr(currentFolderPath, '\\');
+	if (lastSlash) *lastSlash = '\0'; // cut off the executable name to keep only the path
 
     if (argc < 2) {
         _tprintf_or_not(TEXT("%s"), usage);
