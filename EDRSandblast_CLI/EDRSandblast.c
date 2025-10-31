@@ -206,7 +206,7 @@ Dump options:\n\
     START_MODE startMode = none;
 	enum disableCallback { DISABLE, ENABLE, DISABLE_WAIT_ENTER_ENABLE, DISABLE_WAIT_TIME_ENABLE };
     enum disableCallback toggle_option;
-	int wait_time = 30; //seconds
+	int wait_time = 10; //seconds
     TCHAR driverPath[MAX_PATH] = { 0 };
     TCHAR unsignedDriverPath[MAX_PATH] = { 0 };
     TCHAR driverDefaultName[] = DEFAULT_DRIVER_FILE;
@@ -545,7 +545,7 @@ Dump options:\n\
         LPTSTR serviceNameIfAny = NULL;
         BOOL isDriverAlreadyRunning = IsDriverServiceRunning(driverPath, &serviceNameIfAny);
         if (isDriverAlreadyRunning) {
-            _putts_or_not(TEXT("[+] Vulnerable driver is already running!\n"));
+            _tprintf_or_not(TEXT("[+] Vulnerable service '%s' is already running!\n"), serviceNameIfAny);
             SetDriverServiceName(serviceNameIfAny);
         }
         else {
