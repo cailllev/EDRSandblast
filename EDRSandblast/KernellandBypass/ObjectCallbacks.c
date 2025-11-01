@@ -306,7 +306,7 @@ void EnableDisableEDRProcessAndThreadObjectsCallbacks(struct FOUND_EDR_CALLBACKS
             if (callbackAddress) {
                 DWORD64 driverOffset = 0;
                 FindDriverName(callbackAddress, &driverOffset);
-                driverOffset -= 0x14; // there seems to be a shift of 0x14 between the callback struct and the actual callback function address?
+                driverOffset -= 0x14; // &(callbackAddress) - 0x14 = &(callbackBase) <- the base is displayed before in the logs
                 _tprintf_or_not(TEXT("[+] [ObjectCallblacks]\t%s %s callback at 0x%llX ...\n"), enable ? TEXT("Enabling") : TEXT("Disabling"), cb->driver_name, driverOffset);
             }
             else {
